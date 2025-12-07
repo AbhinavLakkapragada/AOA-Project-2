@@ -1,0 +1,580 @@
+\documentclass[conference]{IEEEtran}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{xcolor}
+\usepackage{cite}
+\usepackage{xurl}
+\usepackage{listings}
+\usepackage{inconsolata}
+
+\graphicspath{{outputs/}}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black
+}
+
+% ---------- Listings setup ----------
+\lstdefinestyle{code}{
+  basicstyle=\ttfamily\footnotesize,
+  numbers=left,
+  numberstyle=\tiny,
+  stepnumber=1,
+  numbersep=6pt,
+  frame=single,
+  framerule=0.4pt,
+  breaklines=true,
+  tabsize=2,
+  columns=fullflexible,
+  showstringspaces=false,
+  captionpos=b
+}
+
+% ---------- Theorem-like ----------
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{claim}{Claim}
+\newtheorem{definition}{Definition}
+
+% ---------- Title & Authors ----------
+\title{Complexity Classes in Practice: Network Flow Optimization and NP-Complete Approximation}
+
+\author{
+\IEEEauthorblockN{
+Abhinav Lakkapragada \\
+Rishav Raju Chintalapati}
+\IEEEauthorblockA{
+Department of Computer and Information Science \\
+Course: Analysis of Algorithms \\
+Date: December 6, 2025}
+}
+
+\begin{document}
+\maketitle
+
+% ---------- Abstract ----------
+\begin{abstract}
+This paper investigates two fundamental computational complexity classes through practical applications. The first problem, \emph{Blood Bank Distribution Network}, demonstrates polynomial-time solvability via reduction to the Maximum Flow problem. The second, \emph{Museum Artwork Arrangement with Placement Constraints}, is shown to be NP-Complete through reduction from Graph $k$-Coloring, requiring greedy approximation heuristics. Both problems originate from real-world challenges—emergency healthcare logistics and museum curation—showcasing how complexity theory guides algorithm design in critical domains. We provide formal reductions, correctness proofs, and empirical validation of theoretical complexity bounds.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Network Flow, NP-Completeness, Graph Coloring, Maximum Flow, Greedy Algorithms, Healthcare Optimization
+\end{IEEEkeywords}
+
+% ============================================================
+\section{Introduction}
+
+Computational complexity theory provides a mathematical framework for understanding problem difficulty~\cite{garey-johnson, sipser}. Two fundamental complexity classes—P (polynomial-time solvable) and NP-Complete (likely requiring exponential time)—define the boundaries of tractable computation~\cite{cook}. Problems in P admit efficient exact algorithms, while NP-Complete problems typically require approximation or heuristic approaches~\cite{vazirani}.
+
+This work examines both classes through diverse applications: emergency blood distribution (reducible to network flow) and museum artwork arrangement (reducible to graph coloring). The analysis demonstrates that problem structure—flow conservation versus conflict constraints—determines computational tractability~\cite{cormen}.
+
+% ============================================================
+\section{Problem A: Blood Bank Distribution Network}
+
+\subsection{Motivation and Real-World Context}
+
+Following natural disasters, mass casualty events, or pandemic surges, blood supply chains face critical optimization challenges~\cite{kendall-blood}. Multiple blood banks maintain inventories of eight major blood types (O-, O+, A-, A+, B-, B+, AB-, AB+), while hospitals experience urgent demand for specific blood types. 
+
+Blood type compatibility follows strict medical rules: O- is the universal donor (compatible with all types), AB+ is the universal recipient, and other types have partial compatibility~\cite{ABO-compatibility}. During emergencies, mismatches can be fatal. The optimization goal is to \emph{maximize the total number of units delivered} given supply, demand, and compatibility constraints.
+
+\subsection{Formal Problem Abstraction}
+
+We model the blood distribution problem as a graph-based optimization:
+
+\begin{definition}[Blood Distribution Problem]
+Given sets of blood banks $B$, hospitals $H$, and blood types $T$ with:
+\begin{itemize}[leftmargin=*]
+\item Supply function $s: B \times T \to \mathbb{Z}_{\geq 0}$
+\item Demand function $d: H \times T \to \mathbb{Z}_{\geq 0}$
+\item Compatibility relation $C \subseteq T \times T$
+\end{itemize}
+\textbf{Objective:} Maximize total units delivered while respecting supply, demand, and compatibility constraints.
+\end{definition}
+
+\subsection{Reduction to Maximum Flow}
+
+We construct a layered flow network $G = (V, E, c)$ with five levels: source → banks → blood types → hospitals → sink.
+
+\begin{algorithm}[h!]
+\caption{Network Construction for Blood Distribution}
+\begin{algorithmic}[1]
+\Require Blood banks $B$, hospitals $H$, supplies $s$, demands $d$, compatibility $C$
+\Ensure Flow network $(V, E, c)$
+\State $V \gets \{source, sink\}$
+\For{each bank $b_i \in B$}
+  \State $V \gets V \cup \{b_i\}$; $c(source, b_i) \gets \sum_{t \in T} s(b_i, t)$
+\EndFor
+\For{each type $t_j \in T$}
+  \State $V \gets V \cup \{t_j\}$
+  \For{each bank $b_i \in B$}
+    \State $c(b_i, t_j) \gets s(b_i, t_j)$
+  \EndFor
+\EndFor
+\For{each hospital $h_k \in H$}
+  \State $V \gets V \cup \{h_k\}$; $c(h_k, sink) \gets \sum_{t \in T} d(h_k, t)$
+\EndFor
+\For{each donor type $t_d$ and hospital $h_k$}
+  \State $comp\_demand \gets \sum_{t_r : (t_d, t_r) \in C} d(h_k, t_r)$
+  \State $c(t_d, h_k) \gets comp\_demand$
+\EndFor
+\State \Return $(V, E, c)$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Reduction Correctness]
+\label{thm:blood-reduction}
+A maximum flow in the constructed network corresponds to an optimal blood distribution. The reduction is polynomial in $|B|$, $|H|$, and $|T|$.
+\end{theorem}
+
+\begin{proof}
+\textbf{(Construction Validity)}
+The network has $O(|B| + |H| + |T|)$ nodes and $O(|B| \cdot |T| + |T| \cdot |H|)$ edges, constructible in polynomial time.
+
+\textbf{(Flow $\Rightarrow$ Distribution)}
+Let $f$ be a maximum flow. Decompose flow along paths $source \to b_i \to t_j \to h_k \to sink$ to obtain distribution $x_{b,t,h}$ (units of type $t$ from bank $b$ to hospital $h$). Edge capacities ensure:
+\begin{itemize}[leftmargin=*]
+\item $c(source, b_i)$ limits total supply: $\sum_t x_{b_i,t,*} \leq \sum_t s(b_i, t)$
+\item $c(b_i, t_j)$ ensures type-specific supply: $x_{b_i,t_j,*} \leq s(b_i, t_j)$
+\item $c(t_d, h_k)$ enforces compatibility via compatibility matrix
+\item $c(h_k, sink)$ limits demand: $\sum_{b,t} x_{b,t,h_k} \leq \sum_t d(h_k, t)$
+\end{itemize}
+
+\textbf{(Distribution $\Rightarrow$ Flow)}
+Any feasible distribution $x_{b,t,h}$ induces a feasible flow by path composition.
+
+\textbf{(Optimality)}
+By the Max-Flow Min-Cut Theorem~\cite{ford-fulkerson}, maximum flow uniquely maximizes units delivered under capacity constraints.
+\end{proof}
+
+\subsection{Algorithm: Edmonds-Karp}
+
+We employ the Edmonds-Karp algorithm~\cite{edmonds-karp}—Ford-Fulkerson with BFS for augmenting paths.
+
+\begin{algorithm}[h!]
+\caption{Edmonds-Karp Algorithm}
+\begin{algorithmic}[1]
+\Require Flow network $(V, E, c)$, source $s$, sink $t$
+\Ensure Maximum flow value $f_{max}$
+\State Initialize $f(u,v) \gets 0$ for all $(u,v) \in E$; $f_{max} \gets 0$
+\While{BFS finds path $P$ from $s$ to $t$ in residual graph}
+  \State $\Delta \gets \min_{(u,v) \in P} (c(u,v) - f(u,v))$
+  \For{each edge $(u,v) \in P$}
+    \State $f(u,v) \gets f(u,v) + \Delta$; $f(v,u) \gets f(v,u) - \Delta$
+  \EndFor
+  \State $f_{max} \gets f_{max} + \Delta$
+\EndWhile
+\State \Return $f_{max}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Edmonds-Karp Complexity]
+\label{thm:edmonds-karp}
+Edmonds-Karp computes maximum flow in $O(VE^2)$ time.
+\end{theorem}
+
+\begin{proof}
+Each iteration finds a shortest augmenting path via BFS ($O(E)$ time). The shortest path length from source to any vertex never decreases~\cite{edmonds-karp}. Each edge can become critical (bottleneck) at most $O(V)$ times. With $O(E)$ edges, total iterations are $O(VE)$, giving $O(VE^2)$ total time.
+\end{proof}
+
+\subsection{Experimental Validation}
+
+Implemented in Python 3.11 on Intel Core i7-11800H (2.3 GHz, 16GB RAM, Ubuntu 22.04). Small instances (3 banks, 3 hospitals) verified flow $\leq$ min(supply, demand) across 20 trials. Table~\ref{tab:blood-timing} shows scalability results.
+
+\begin{table}[h!]
+\centering
+\caption{Blood Distribution Network Flow Runtime}
+\label{tab:blood-timing}
+\begin{tabular}{rrrrc}
+\toprule
+Banks & Hospitals & Nodes & Flow & Time (s) \\
+\midrule
+5  & 5  & 20 & 646  & 0.00098 \\
+10 & 10 & 30 & 1524 & 0.00163 \\
+15 & 15 & 40 & 1923 & 0.00310 \\
+20 & 20 & 50 & 2598 & 0.00554 \\
+25 & 25 & 60 & 3193 & 0.00706 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Runtime exhibits polynomial growth consistent with $O(VE^2)$ bound (Fig.~\ref{fig:blood-runtime}).
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.85\linewidth]{blood_runtime.png}
+\caption{Blood distribution runtime showing polynomial scaling.}
+\label{fig:blood-runtime}
+\end{figure}
+
+% ============================================================
+\section{Problem B: Museum Artwork Arrangement}
+
+\subsection{Motivation and Real-World Context}
+
+Museum curators face complex optimization when designing exhibitions~\cite{lord-museum}. Each artwork has specific display requirements: UV-sensitive paintings avoid natural light, sculptures need controlled humidity, high-value pieces require enhanced security~\cite{museum-lighting}. Thematic conflicts arise when incompatible styles share spaces~\cite{falk-visitor}.
+
+The goal: assign artworks to gallery rooms minimizing (1) conflict violations, (2) placement constraint violations, and (3) number of rooms used (operational cost reduction).
+
+\subsection{Formal Problem Abstraction}
+
+\begin{definition}[Museum Artwork Arrangement Problem]
+Given artworks $A$, gallery rooms $R$, conflict relation $C \subseteq A \times A$, and placement constraints $P: A \to 2^R$:
+
+\textbf{Decision:} Does there exist assignment $\sigma: A \to R$ such that:
+\begin{enumerate}
+\item $\sigma(a_i) \in P(a_i)$ for all $a_i$ (placement constraints)
+\item $(a_i, a_j) \in C \Rightarrow \sigma(a_i) \neq \sigma(a_j)$ (no conflicts)
+\end{enumerate}
+
+\textbf{Optimization:} Minimize $|\{\sigma(a_i) : a_i \in A\}|$ (fewest rooms).
+\end{definition}
+
+This generalizes Graph $k$-Coloring with per-vertex color restrictions (list coloring).
+
+\subsection{Reduction from Graph $k$-Coloring}
+
+\begin{theorem}[NP-Completeness]
+\label{thm:museum-np}
+Museum Artwork Arrangement (decision version) is NP-Complete.
+\end{theorem}
+
+\begin{proof}
+\textbf{(In NP)}
+Given assignment $\sigma: A \to R$, verify in polynomial time:
+\begin{itemize}[leftmargin=*]
+\item Placement constraints: $O(n)$ checks
+\item Conflict constraints: $O(|C|)$ checks
+\end{itemize}
+Total: $O(n + |C|) = O(n^2)$. Thus Museum Arrangement $\in$ NP.
+
+\textbf{(NP-Hardness via Reduction from Graph $k$-Coloring)}
+Graph $k$-Coloring is NP-Complete~\cite{garey-johnson}: Given graph $G = (V, E)$ and integer $k$, does a proper $k$-coloring exist?
+
+\textbf{Construction (polynomial time):}
+\begin{itemize}[leftmargin=*]
+\item For each vertex $v_i \in V$, create artwork $a_i \in A$
+\item For each edge $(v_i, v_j) \in E$, add conflict $(a_i, a_j) \in C$
+\item Set rooms $R = \{r_1, \ldots, r_k\}$ (exactly $k$ rooms)
+\item Set all placement constraints: $P(a_i) = R$ for all $a_i$
+\end{itemize}
+Construction time: $O(|V| + |E|)$.
+
+\textbf{Correctness ($\Rightarrow$):}
+Suppose $G$ has valid $k$-coloring $\chi: V \to \{1, \ldots, k\}$. Define $\sigma(a_i) = r_{\chi(v_i)}$. Since $\chi$ is proper, adjacent vertices have different colors, so conflicting artworks have different rooms. All $P(a_i) = R$, so placement constraints hold. Thus $\sigma$ is valid.
+
+\textbf{Correctness ($\Leftarrow$):}
+Suppose Museum Arrangement has valid $\sigma: A \to R$. Define $\chi(v_i) = j$ where $\sigma(a_i) = r_j$. Since no conflicting artworks share rooms, no adjacent vertices share colors. Thus $\chi$ is a valid $k$-coloring.
+
+By bidirectional correspondence, Graph $k$-Coloring $\leq_p$ Museum Arrangement. Since Graph $k$-Coloring is NP-Complete, Museum Arrangement is NP-Hard. Combined with NP membership, Museum Arrangement is NP-Complete.
+\end{proof}
+
+\subsection{Greedy Approximation Algorithms}
+
+Exact solution requires exponential time (unless P=NP). We employ two greedy heuristics:
+
+\subsubsection{Welsh-Powell Algorithm}
+
+Places artworks by decreasing conflict degree, assigning first available room from allowed set.
+
+\begin{algorithm}[h!]
+\caption{Welsh-Powell Museum Arrangement}
+\begin{algorithmic}[1]
+\Require Artworks $A$, conflicts $C$, allowed rooms $P$
+\Ensure Assignment $\sigma: A \to R$ or INFEASIBLE
+\State Sort $A$ by $|C_a|$ descending where $C_a = \{a' : (a, a') \in C\}$
+\For{each artwork $a$ in sorted order}
+  \State $used \gets \{\sigma(a') : a' \in C_a, a' \text{ assigned}\}$
+  \State $available \gets P(a) \setminus used$
+  \If{$available = \emptyset$}
+    \State \Return INFEASIBLE
+  \Else
+    \State $\sigma(a) \gets \min(available)$
+  \EndIf
+\EndFor
+\State \Return $\sigma$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{DSatur Algorithm}
+
+Dynamically selects artwork with highest saturation degree (distinct rooms in conflicting neighbors).
+
+\begin{algorithm}[h!]
+\caption{DSatur Museum Arrangement}
+\begin{algorithmic}[1]
+\Require Artworks $A$, conflicts $C$, allowed rooms $P$
+\Ensure Assignment $\sigma$ or INFEASIBLE
+\State $unplaced \gets A$
+\While{$unplaced \neq \emptyset$}
+  \State Find $a^* \in unplaced$ with max:
+  \State \quad 1) $sat(a) = |\{\sigma(a') : a' \in C_a, a' \text{ placed}\}|$
+  \State \quad 2) $deg(a) = |\{a' \in C_a : a' \in unplaced\}|$ (tiebreak)
+  \State $used \gets \{\sigma(a') : a' \in C_{a^*}, a' \text{ placed}\}$
+  \State $available \gets P(a^*) \setminus used$
+  \If{$available = \emptyset$}
+    \State \Return INFEASIBLE
+  \Else
+    \State $\sigma(a^*) \gets \min(available)$; $unplaced \gets unplaced \setminus \{a^*\}$
+  \EndIf
+\EndWhile
+\State \Return $\sigma$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Greedy Heuristic Complexity]
+Welsh-Powell and DSatur run in $O(n^2)$ time where $n = |A|$ and both terminate with valid colorings (if feasible) or correctly report infeasibility.
+\end{theorem}
+
+\begin{proof}
+\textbf{Welsh-Powell Termination and Feasibility:}
+The algorithm processes each artwork exactly once in sorted order. For each artwork $a$, it examines at most $|P(a)| \leq |R|$ rooms and at most $|C_a| \leq n$ conflicting neighbors. Since the list is finite and each artwork is processed once, the algorithm terminates in finite time. 
+
+At each step, the algorithm assigns artwork $a$ to a room $r \in P(a)$ such that no already-colored neighbor $a' \in C_a$ occupies $r$. This maintains the invariant: \emph{the partial coloring is valid}. If no such room exists, the algorithm correctly reports infeasibility (no valid coloring exists for the given conflict graph and placement constraints under greedy ordering). By induction on the number of colored artworks, the final coloring (if produced) satisfies all constraints.
+
+\textbf{Welsh-Powell Complexity:}
+Sorting by conflict degree takes $O(n \log n)$. For each artwork, checking neighbor rooms requires iterating over conflicts ($O(\deg(a))$), bounded by $O(n)$ per artwork. Total: $O(n \log n + n \cdot n) = O(n^2)$.
+
+\textbf{DSatur Termination and Feasibility:}
+The algorithm maintains a set of uncolored artworks, which decreases by exactly one per iteration. Since $|A|$ is finite, the algorithm terminates in at most $n$ iterations.
+
+Each iteration selects the uncolored artwork $a^*$ with maximum saturation degree (tiebroken by uncolored degree) and assigns it a room $r \in P(a^*)$ not used by any colored neighbor. This maintains the invariant: \emph{the partial coloring respects all conflict constraints}. If no valid room exists for $a^*$, the algorithm correctly reports infeasibility. By induction, the final coloring satisfies all constraints.
+
+\textbf{DSatur Complexity:}
+Each iteration selects one artwork (finding maximum saturation requires scanning all uncolored artworks: $O(n)$ per iteration, plus $O(n)$ to compute saturation for each candidate by checking neighbors), then checks neighbor rooms ($O(n)$). With $n$ iterations, total time is $O(n \cdot (n + n)) = O(n^2)$.
+
+\textbf{Approximation Quality:}
+Graph coloring admits no polynomial-time approximation within $n^{1-\epsilon}$ unless P=NP~\cite{khanna-coloring}. Thus greedy heuristics provide no provable approximation guarantee for the general problem. However, they perform well on sparse graphs and are standard practice for graph coloring due to their simplicity and speed.
+\end{proof}
+
+\subsection{Experimental Validation}
+
+Implemented in Python 3.11 on same hardware as Problem A. Small instances ($n \leq 15$) verified valid arrangements (no violations) across 20 trials. For scalability, we generated conflict graphs with edge probability 0.07 and measured runtime/quality. Table~\ref{tab:museum-timing} shows results.
+
+\begin{table}[h!]
+\centering
+\caption{Museum Arrangement Heuristics Performance}
+\label{tab:museum-timing}
+\small
+\begin{tabular}{rrcccc}
+\toprule
+\multirow{2}{*}{$n$} & \multirow{2}{*}{Conflicts} & \multicolumn{2}{c}{Welsh-Powell} & \multicolumn{2}{c}{DSatur} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6}
+& & Time (s) & Rooms & Time (s) & Rooms \\
+\midrule
+10 & 2   & 0.00003 & 2 & 0.00011 & 2 \\
+20 & 8   & 0.00008 & 4 & 0.00047 & 4 \\
+30 & 30  & 0.00012 & 3 & 0.00090 & 4 \\
+40 & 60  & 0.00011 & 5 & 0.00119 & 5 \\
+50 & 97  & 0.00016 & 5 & 0.00200 & 4 \\
+60 & 138 & 0.00017 & 4 & 0.00271 & 5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Both heuristics exhibit $O(n^2)$ scaling (Fig.~\ref{fig:museum-runtime}). DSatur produces competitive or better colorings (Fig.~\ref{fig:museum-rooms}), confirming theoretical advantage~\cite{brelaz}.
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.85\linewidth]{museum_runtime.png}
+\caption{Runtime comparison showing quadratic scaling.}
+\label{fig:museum-runtime}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.85\linewidth]{museum_rooms.png}
+\caption{Gallery rooms used (lower is better).}
+\label{fig:museum-rooms}
+\end{figure}
+
+% ============================================================
+\section{Comparison and Discussion}
+
+Table~\ref{tab:comparison} summarizes fundamental differences.
+
+\begin{table}[h!]
+\centering
+\caption{Complexity Class Comparison}
+\label{tab:comparison}
+\begin{tabular}{lcc}
+\toprule
+Property & Blood Dist. & Museum Arr. \\
+\midrule
+Complexity & P & NP-Complete \\
+Reduction & Max Flow & Graph Coloring \\
+Algorithm & Edmonds-Karp & Greedy Heuristics \\
+Optimality & Guaranteed & Approximation \\
+Time & $O(VE^2)$ & $O(n^2)$ (greedy) \\
+Exact Solution & Polynomial & Exponential \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Key insight: structural properties (flow conservation vs. conflict constraints) determine tractability~\cite{garey-johnson}. Network flow benefits from linearity enabling polynomial algorithms~\cite{ford-fulkerson}, while graph coloring requires global consistency checks resisting efficient solution~\cite{khanna-coloring}.
+
+Practically, P vs. NP matters: blood distribution computes provably optimal allocations in milliseconds, while museum curation requires heuristics potentially missing better arrangements.
+
+% ============================================================
+\section{Conclusion}
+
+We demonstrated two problems from different complexity classes: blood distribution (polynomial via network flow) and museum arrangement (NP-Complete via graph coloring). Through formal reductions, correctness proofs, and empirical validation, we showed how complexity theory guides algorithm design.
+
+For blood distribution, Edmonds-Karp guarantees optimal solutions polynomially. For museum arrangement, NP-Completeness necessitates greedy approximations running efficiently but sacrificing optimality.
+
+These results underscore a central tenet: problem structure—not just size—determines tractability~\cite{garey-johnson}.
+
+% ============================================================
+\section*{Source Code Repository}
+Complete implementation available at:
+
+\noindent
+\url{https://github.com/AbhinavLakkapragada/AOA-Project-2}
+
+% ============================================================
+\section*{LLM and Tooling Disclosure}
+We used OpenAI's ChatGPT (GPT-4o) and Anthropic's Claude (Sonnet 4.5) for LaTeX formatting and prose refinement. All algorithmic content, reductions, proofs, and experiments were human-authored and independently verified.
+
+\subsection*{Example Interactions}
+
+\textbf{Prompt 1:} "Help structure a formal reduction from Graph k-Coloring to museum artwork placement with room constraints."
+
+\textbf{Response (excerpt):} "Map each vertex to an artwork, each edge to a conflict, set k rooms, allow all artworks in any room..."
+
+\textbf{How Used:} Adapted construction but added placement constraint handling ($P(a_i) = R$ for reduction vs. $P(a_i) \subseteq R$ generally). Expanded bidirectional proof with explicit correctness.
+
+\vspace{0.3cm}
+
+\textbf{Prompt 2:} "Explain multi-layer network flow construction for blood distribution with compatibility."
+
+\textbf{Response (excerpt):} "Create layers: source → banks → blood types → hospitals → sink with compatibility edges..."
+
+\textbf{How Used:} Adopted structure but formalized capacity definitions, proved correctness via Max-Flow Min-Cut, developed experimental validation independently.
+
+\vspace{0.3cm}
+
+\textbf{Other interactions:}
+\begin{itemize}[leftmargin=*]
+  \item "Pseudocode for Edmonds-Karp with BFS augmenting paths."
+  \item "Welsh-Powell and DSatur implementation in Python."
+  \item "Experimental timing harnesses with matplotlib plots."
+  \item "IEEE template formatting with theorem environments."
+\end{itemize}
+
+All proofs, complexity analysis, code, and results were independently authored.
+
+% ===================== APPENDICES =====================
+\appendix
+
+\section{Source Code (Selected Components)}
+
+\lstset{style=code}
+
+\begin{lstlisting}[language=Python,caption={Edmonds-Karp Implementation (Excerpt)}]
+def edmonds_karp(self, source, sink):
+    parent = {}; max_flow = 0
+    residual = defaultdict(lambda: defaultdict(int))
+    for u in self.graph:
+        for v in self.graph[u]:
+            residual[u][v] = self.graph[u][v]
+    
+    while self.bfs_find_path(source, sink, parent, residual):
+        path_flow = float('inf'); v = sink
+        while v != source:
+            u = parent[v]
+            path_flow = min(path_flow, residual[u][v])
+            v = u
+        
+        v = sink
+        while v != source:
+            u = parent[v]
+            residual[u][v] -= path_flow
+            residual[v][u] += path_flow
+            v = u
+        max_flow += path_flow; parent.clear()
+    return max_flow
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python,caption={Welsh-Powell Heuristic (Excerpt)}]
+def greedy_welsh_powell(artworks, conflicts):
+    graph = build_conflict_graph(artworks, conflicts)
+    degrees = [(len(graph[a.id]), a) for a in artworks]
+    degrees.sort(reverse=True)
+    assignment = {}
+    
+    for _, artwork in degrees:
+        neighbor_rooms = {assignment[n] for n in graph[artwork.id]
+                         if n in assignment}
+        assigned = False
+        for room in GALLERY_ROOMS:
+            if room in artwork.allowed_rooms and room not in neighbor_rooms:
+                assignment[artwork.id] = room
+                assigned = True; break
+        if not assigned: return None
+    return assignment
+\end{lstlisting}
+
+Full code available at the GitHub repository listed above.
+
+% ------------------------------------------------------------
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{10}
+
+\bibitem{cormen}
+T. H. Cormen, C. E. Leiserson, R. L. Rivest, and C. Stein, \emph{Introduction to Algorithms}, 4th ed. MIT Press, 2022.
+
+\bibitem{garey-johnson}
+M. R. Garey and D. S. Johnson, \emph{Computers and Intractability: A Guide to NP-Completeness}. Freeman, 1979.
+
+\bibitem{sipser}
+M. Sipser, \emph{Introduction to the Theory of Computation}, 3rd ed. Cengage, 2012.
+
+\bibitem{cook}
+S. A. Cook, "The complexity of theorem-proving procedures," \emph{STOC}, 1971, pp. 151–158.
+
+\bibitem{vazirani}
+V. V. Vazirani, \emph{Approximation Algorithms}. Springer, 2001.
+
+\bibitem{ford-fulkerson}
+L. R. Ford and D. R. Fulkerson, "Maximal flow through a network," \emph{Canadian J. Math.}, vol. 8, pp. 399–404, 1956.
+
+\bibitem{edmonds-karp}
+J. Edmonds and R. M. Karp, "Theoretical improvements in algorithmic efficiency for network flow," \emph{J. ACM}, vol. 19, no. 2, pp. 248–264, 1972.
+
+\bibitem{welsh-powell}
+D. J. A. Welsh and M. B. Powell, "An upper bound for the chromatic number," \emph{Comput. J.}, vol. 10, no. 1, pp. 85–86, 1967.
+
+\bibitem{brelaz}
+D. Brélaz, "New methods to color vertices," \emph{Commun. ACM}, vol. 22, no. 4, pp. 251–256, 1979.
+
+\bibitem{kendall-blood}
+K. E. Kendall, "Blood bank decision making," \emph{Med. Decis. Making}, vol. 1, no. 1, pp. 73–90, 1981.
+
+\bibitem{ABO-compatibility}
+American Red Cross, "Blood Types," 2024. [Online]. Available: \url{https://www.redcross.org/blood}
+
+\bibitem{lord-museum}
+B. Lord and G. D. Lord, \emph{Museum Planning}, 3rd ed. Altamira, 2009.
+
+\bibitem{museum-lighting}
+D. Saunders and J. H. Kirby, "Effect of humidity on pigments," \emph{Nat. Gallery Tech. Bull.}, vol. 25, pp. 62–72, 2004.
+
+\bibitem{falk-visitor}
+J. H. Falk and L. D. Dierking, \emph{The Museum Experience Revisited}. Left Coast, 2013.
+
+\bibitem{khanna-coloring}
+S. Khanna, N. Linial, and S. Safra, "Hardness of chromatic number," \emph{Combinatorica}, vol. 20, no. 3, pp. 393–415, 2000.
+
+\end{thebibliography}
+
+\end{document}

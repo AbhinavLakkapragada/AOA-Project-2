@@ -1,7 +1,9 @@
 # AOA Project 2: Network Flow and NP-Completeness
 
-**Authors:** Abhinav Lakkapragada, Rishav Raju Chintalapati 
-**Course:** Analysis of Algorithms  
+**Authors:** Abhinav Lakkapragada, Rishav Raju Chintalapati
+
+**Course:** Analysis of Algorithms
+
 **Date:** December 6, 2025
 
 ## Overview
@@ -97,3 +99,4 @@ See `project_report.tex` for complete bibliography including:
 - Garey & Johnson (NP-Completeness)
 - Edmonds & Karp (Network Flow)
 - Welsh & Powell, Brélaz (Graph Coloring)
+
