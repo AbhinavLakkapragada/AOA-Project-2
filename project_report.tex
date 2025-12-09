@@ -65,7 +65,7 @@ Date: December 6, 2025}
 
 % ---------- Abstract ----------
 \begin{abstract}
-This paper investigates two fundamental computational complexity classes through practical applications. The first problem, \emph{Blood Bank Distribution Network}, demonstrates polynomial-time solvability via reduction to the Maximum Flow problem. The second, \emph{Museum Artwork Arrangement with Placement Constraints}, is shown to be NP-Complete through reduction from Graph $k$-Coloring, requiring greedy approximation heuristics. Both problems originate from real-world challenges—emergency healthcare logistics and museum curation—showcasing how complexity theory guides algorithm design in critical domains. We provide formal reductions, correctness proofs, and empirical validation of theoretical complexity bounds.
+This paper investigates two fundamental computational complexity classes through practical applications. The first problem, \emph{Blood Bank Distribution with Type-Compatible Network Flow}, demonstrates polynomial-time solvability via reduction to the Maximum Flow problem. The second, \emph{Museum Artwork Arrangement with Placement Conflicts}, is shown to be NP-Complete through reduction from Graph $k$-Coloring, requiring greedy approximation heuristics. Both problems originate from real-world challenges—emergency healthcare logistics and museum curation—showcasing how complexity theory guides algorithm design in critical domains. We provide formal reductions, correctness proofs, and empirical validation of theoretical complexity bounds.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -80,7 +80,7 @@ Computational complexity theory provides a mathematical framework for understand
 This work examines both classes through diverse applications: emergency blood distribution (reducible to network flow) and museum artwork arrangement (reducible to graph coloring). The analysis demonstrates that problem structure—flow conservation versus conflict constraints—determines computational tractability~\cite{cormen}.
 
 % ============================================================
-\section{Problem A: Blood Bank Distribution Network}
+\section{Problem A: Blood Bank Distribution with Type-Compatible Network Flow}
 
 \subsection{Motivation and Real-World Context}
 
@@ -218,7 +218,7 @@ Runtime exhibits polynomial growth consistent with $O(VE^2)$ bound (Fig.~\ref{fi
 \end{figure}
 
 % ============================================================
-\section{Problem B: Museum Artwork Arrangement}
+\section{Problem B: Museum Artwork Arrangement with Placement Conflicts}
 
 \subsection{Motivation and Real-World Context}
 
