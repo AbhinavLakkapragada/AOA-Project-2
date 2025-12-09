@@ -61,12 +61,12 @@ python project_code.py
 
 The code runs the following experiments:
 
-### Problem A: Blood Distribution Network
+### Problem A: Blood Bank Distribution with Type-Compatible Network Flow
 - Validates flow constraints (20 trials)
 - Measures Edmonds-Karp runtime for networks with 5-25 banks/hospitals
 - Generates: `blood_sanity.csv`, `blood_timing.csv`, `blood_runtime.png`
 
-### Problem B: Museum Artwork Arrangement
+### Problem B: Museum Artwork Arrangement with Placement Conflicts
 - Validates greedy coloring constraints (20 trials)
 - Measures Welsh-Powell and DSatur runtime for 10-60 artworks
 - Generates: `museum_sanity.csv`, `museum_timing.csv`, `museum_runtime.png`, `museum_rooms.png`
